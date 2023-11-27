@@ -10,6 +10,7 @@ use general_sam::{
     tokenize::OwnedGeneralSAM, trie::Trie, BTreeTransTable, BoxBisectTable, GeneralSAM,
     GreedyTokenizer as SAMGreedyTokenizer,
 };
+use regex::Regex;
 
 use crate::tokenizer::{Model, Result, Token};
 
@@ -59,6 +60,11 @@ impl GreedyTokenizerBuilder {
     }
 
     pub fn build(self) -> Result<GreedyTokenizer> {
+        lazy_static! {
+            static ref BYTE_REPR_RE: Regex = Regex::new(r"^<0[xX]([[:xdigit:]]{2})>$").unwrap();
+        }
+        let byte_repr_re_ref: &Regex = &BYTE_REPR_RE;
+
         if let Some(unk_token_id) = self.config.unk_token_id {
             if unk_token_id as usize >= self.config.vocab.len() {
                 return Err(super::Error::UnkTokenIDOutOfVocabulary(
@@ -71,10 +77,20 @@ impl GreedyTokenizerBuilder {
 
         let mut trie: Trie<BTreeTransTable<_>> = Trie::default();
         let mut token_id_in_trie_map = HashMap::<usize, u32>::new();
-        self.config.vocab.iter().enumerate().for_each(|(i, token)| {
-            let k = trie.insert_ref_iter(token.as_bytes().iter());
+        for (i, token) in self.config.vocab.iter().enumerate() {
+            let k = if let Some(r) = self
+                .config
+                .byte_fallback
+                .then_some(())
+                .and_then(|_| byte_repr_re_ref.captures(token).and_then(|x| x.get(1)))
+            {
+                trie.insert_ref_iter([u8::from_str_radix(r.as_str(), 16)?].iter())
+            } else {
+                trie.insert_ref_iter(token.as_bytes().iter())
+            };
+
             token_id_in_trie_map.insert(k, i as u32);
-        });
+        }
         let trie: Trie<BoxBisectTable<_>> = trie.alter_trans_table();
 
         let mut token_id_in_trie = Vec::<u32>::new();
