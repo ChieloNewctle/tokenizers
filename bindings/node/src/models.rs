@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
+use tk::decoders::byte_fallback;
 use tokenizers as tk;
 use tokenizers::models::bpe::{BpeBuilder, Merges, Vocab};
 use tokenizers::models::wordlevel::WordLevelBuilder;
@@ -331,6 +332,51 @@ impl Unigram {
     let unigram = tk::models::unigram::Unigram::default();
     Model {
       model: Some(Arc::new(RwLock::new(unigram.into()))),
+    }
+  }
+}
+
+#[derive(Default)]
+#[napi(object)]
+pub struct GreedyTokenizerOptions {
+  pub unk_token_id: Option<u32>,
+  pub byte_fallback: Option<bool>,
+}
+
+#[napi]
+pub struct GreedyTokenizer {}
+
+#[napi]
+impl GreedyTokenizer {
+  #[napi(factory, ts_return_type = "Model")]
+  pub fn init(vocab: Vec<String>, options: Option<GreedyTokenizerOptions>) -> Result<Model> {
+    let options = options.unwrap_or_default();
+
+    let mut builder = tk::models::gt::GreedyTokenizerBuilder::default().vocab(vocab);
+
+    if let Some(unk_token_id) = options.unk_token_id {
+      builder = builder.unk_token_id(unk_token_id);
+    }
+    if let Some(flag) = options.byte_fallback {
+      builder = builder.byte_fallback(flag);
+    }
+
+    let tokenizer = builder
+      .build()
+      .map_err(|e| Error::from_reason(e.to_string()))?;
+
+    Ok(Model {
+      model: Some(Arc::new(RwLock::new(tokenizer.into()))),
+    })
+  }
+
+  #[napi(factory, ts_return_type = "Model")]
+  pub fn empty() -> Model {
+    let tokenizer = tk::models::gt::GreedyTokenizerBuilder::default()
+      .build()
+      .unwrap();
+    Model {
+      model: Some(Arc::new(RwLock::new(tokenizer.into()))),
     }
   }
 }

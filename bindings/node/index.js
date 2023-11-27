@@ -253,6 +253,7 @@ const {
   WordPiece,
   WordLevel,
   Unigram,
+  GreedyTokenizer,
   Normalizer,
   prependNormalizer,
   stripAccentsNormalizer,
@@ -312,6 +313,7 @@ module.exports.BPE = BPE
 module.exports.WordPiece = WordPiece
 module.exports.WordLevel = WordLevel
 module.exports.Unigram = Unigram
+module.exports.GreedyTokenizer = GreedyTokenizer
 module.exports.Normalizer = Normalizer
 module.exports.prependNormalizer = prependNormalizer
 module.exports.stripAccentsNormalizer = stripAccentsNormalizer

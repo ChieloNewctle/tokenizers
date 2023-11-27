@@ -46,6 +46,10 @@ export interface UnigramOptions {
   unkId?: number
   byteFallback?: boolean
 }
+export interface GreedyTokenizerOptions {
+  unkTokenId?: number
+  byteFallback?: boolean
+}
 export function prependNormalizer(prepend: string): Normalizer
 export function stripAccentsNormalizer(): Normalizer
 export interface BertNormalizerOptions {
@@ -194,6 +198,10 @@ export class WordLevel {
 }
 export class Unigram {
   static init(vocab: Array<[string, number]>, options?: UnigramOptions | undefined | null): Model
+  static empty(): Model
+}
+export class GreedyTokenizer {
+  static init(vocab: Array<[string, number]>, options?: GreedyTokenizerOptions | undefined | null): Model
   static empty(): Model
 }
 /** Normalizer */
