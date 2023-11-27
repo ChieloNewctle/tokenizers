@@ -1,6 +1,7 @@
 //! Popular tokenizer models.
 
 pub mod bpe;
+pub mod gt;
 pub mod unigram;
 pub mod wordlevel;
 pub mod wordpiece;
@@ -11,6 +12,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize, Serializer};
 
 use crate::models::bpe::{BpeTrainer, BPE};
+use crate::models::gt::{GTTrainer, GreedyTokenizer};
 use crate::models::unigram::{Unigram, UnigramTrainer};
 use crate::models::wordlevel::{WordLevel, WordLevelTrainer};
 use crate::models::wordpiece::{WordPiece, WordPieceTrainer};
@@ -66,12 +68,14 @@ pub enum ModelWrapper {
     WordPiece(WordPiece),
     WordLevel(WordLevel),
     Unigram(Unigram),
+    GreedyTokenizer(GreedyTokenizer),
 }
 
 impl_enum_from!(WordLevel, ModelWrapper, WordLevel);
 impl_enum_from!(WordPiece, ModelWrapper, WordPiece);
 impl_enum_from!(BPE, ModelWrapper, BPE);
 impl_enum_from!(Unigram, ModelWrapper, Unigram);
+impl_enum_from!(GreedyTokenizer, ModelWrapper, GreedyTokenizer);
 
 impl Model for ModelWrapper {
     type Trainer = TrainerWrapper;
@@ -82,6 +86,7 @@ impl Model for ModelWrapper {
             Self::WordPiece(t) => t.tokenize(tokens),
             Self::BPE(t) => t.tokenize(tokens),
             Self::Unigram(t) => t.tokenize(tokens),
+            Self::GreedyTokenizer(t) => t.tokenize(tokens),
         }
     }
 
@@ -91,6 +96,7 @@ impl Model for ModelWrapper {
             Self::WordPiece(t) => t.token_to_id(token),
             Self::BPE(t) => t.token_to_id(token),
             Self::Unigram(t) => t.token_to_id(token),
+            Self::GreedyTokenizer(t) => t.token_to_id(token),
         }
     }
 
@@ -100,6 +106,7 @@ impl Model for ModelWrapper {
             Self::WordPiece(t) => t.id_to_token(id),
             Self::BPE(t) => t.id_to_token(id),
             Self::Unigram(t) => t.id_to_token(id),
+            Self::GreedyTokenizer(t) => t.id_to_token(id),
         }
     }
 
@@ -109,6 +116,7 @@ impl Model for ModelWrapper {
             Self::WordPiece(t) => t.get_vocab(),
             Self::BPE(t) => t.get_vocab(),
             Self::Unigram(t) => t.get_vocab(),
+            Self::GreedyTokenizer(t) => t.get_vocab(),
         }
     }
 
@@ -118,6 +126,7 @@ impl Model for ModelWrapper {
             Self::WordPiece(t) => t.get_vocab_size(),
             Self::BPE(t) => t.get_vocab_size(),
             Self::Unigram(t) => t.get_vocab_size(),
+            Self::GreedyTokenizer(t) => t.get_vocab_size(),
         }
     }
 
@@ -127,6 +136,7 @@ impl Model for ModelWrapper {
             Self::WordPiece(t) => t.save(folder, name),
             Self::BPE(t) => t.save(folder, name),
             Self::Unigram(t) => t.save(folder, name),
+            Self::GreedyTokenizer(t) => t.save(folder, name),
         }
     }
 
@@ -136,6 +146,7 @@ impl Model for ModelWrapper {
             Self::WordPiece(t) => t.get_trainer().into(),
             Self::BPE(t) => t.get_trainer().into(),
             Self::Unigram(t) => t.get_trainer().into(),
+            Self::GreedyTokenizer(t) => t.get_trainer().into(),
         }
     }
 }
@@ -146,6 +157,7 @@ pub enum TrainerWrapper {
     WordPieceTrainer(WordPieceTrainer),
     WordLevelTrainer(WordLevelTrainer),
     UnigramTrainer(UnigramTrainer),
+    GreedyTokenizerTrainer(GTTrainer),
 }
 
 impl Trainer for TrainerWrapper {
@@ -157,6 +169,7 @@ impl Trainer for TrainerWrapper {
             Self::WordPieceTrainer(wpt) => wpt.should_show_progress(),
             Self::WordLevelTrainer(wpt) => wpt.should_show_progress(),
             Self::UnigramTrainer(wpt) => wpt.should_show_progress(),
+            Self::GreedyTokenizerTrainer(wpt) => wpt.should_show_progress(),
         }
     }
 
@@ -178,6 +191,10 @@ impl Trainer for TrainerWrapper {
                 ModelWrapper::Unigram(u) => t.train(u),
                 _ => Err("UnigramTrainer can only train a Unigram".into()),
             },
+            Self::GreedyTokenizerTrainer(t) => match model {
+                ModelWrapper::GreedyTokenizer(u) => t.train(u),
+                _ => Err("GreedyTokenizerTrainer can only train a GreedyTokenizer".into()),
+            },
         }
     }
 
@@ -192,6 +209,7 @@ impl Trainer for TrainerWrapper {
             Self::WordPieceTrainer(wpt) => wpt.feed(iterator, process),
             Self::WordLevelTrainer(wpt) => wpt.feed(iterator, process),
             Self::UnigramTrainer(wpt) => wpt.feed(iterator, process),
+            Self::GreedyTokenizerTrainer(wpt) => wpt.feed(iterator, process),
         }
     }
 }
@@ -200,6 +218,7 @@ impl_enum_from!(BpeTrainer, TrainerWrapper, BpeTrainer);
 impl_enum_from!(WordPieceTrainer, TrainerWrapper, WordPieceTrainer);
 impl_enum_from!(UnigramTrainer, TrainerWrapper, UnigramTrainer);
 impl_enum_from!(WordLevelTrainer, TrainerWrapper, WordLevelTrainer);
+impl_enum_from!(GTTrainer, TrainerWrapper, GreedyTokenizerTrainer);
 
 #[cfg(test)]
 mod tests {
