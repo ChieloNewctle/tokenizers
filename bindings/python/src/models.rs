@@ -9,6 +9,7 @@ use pyo3::prelude::*;
 use pyo3::types::*;
 use serde::{Deserialize, Serialize};
 use tk::models::bpe::{BpeBuilder, Merges, Vocab, BPE};
+use tk::models::gt::GreedyTokenizerBuilder;
 use tk::models::unigram::Unigram;
 use tk::models::wordlevel::WordLevel;
 use tk::models::wordpiece::{WordPiece, WordPieceBuilder};
@@ -39,6 +40,9 @@ impl PyModel {
             ModelWrapper::WordPiece(_) => Py::new(py, (PyWordPiece {}, base))?.into_py(py),
             ModelWrapper::WordLevel(_) => Py::new(py, (PyWordLevel {}, base))?.into_py(py),
             ModelWrapper::Unigram(_) => Py::new(py, (PyUnigram {}, base))?.into_py(py),
+            ModelWrapper::GreedyTokenizer(_) => {
+                Py::new(py, (PyGreedyTokenizer {}, base))?.into_py(py)
+            }
         })
     }
 }
@@ -835,6 +839,45 @@ impl PyUnigram {
     }
 }
 
+/// GreedyTokenizer
+///
+/// Args:
+///     vocab (:obj:`List[str]`, `optional`, `optional`):
+///         The vocabulary [("hello"),...]
+#[pyclass(extends=PyModel, module = "tokenizers.models", name = "GreedyTokenizer")]
+pub struct PyGreedyTokenizer {}
+
+#[pymethods]
+impl PyGreedyTokenizer {
+    #[new]
+    #[pyo3(text_signature = "(self, vocab, unk_token_id, byte_fallback)")]
+    fn new(
+        vocab: Option<Vec<String>>,
+        unk_token_id: Option<usize>,
+        byte_fallback: Option<bool>,
+    ) -> PyResult<(Self, PyModel)> {
+        let mut builder = GreedyTokenizerBuilder::default();
+        if let Some(vocab) = vocab {
+            builder = builder.vocab(vocab);
+        }
+        if let Some(unk_token_id) = unk_token_id {
+            builder = builder.unk_token_id(unk_token_id as u32);
+        }
+        if let Some(byte_fallback) = byte_fallback {
+            builder = builder.byte_fallback(byte_fallback);
+        }
+        Ok((
+            Self {},
+            builder
+                .build()
+                .map_err(|e| {
+                    exceptions::PyException::new_err(format!("Error while loading Unigram: {}", e))
+                })?
+                .into(),
+        ))
+    }
+}
+
 /// Models Module
 #[pymodule]
 pub fn models(_py: Python, m: &PyModule) -> PyResult<()> {
@@ -843,6 +886,7 @@ pub fn models(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyWordPiece>()?;
     m.add_class::<PyWordLevel>()?;
     m.add_class::<PyUnigram>()?;
+    m.add_class::<PyGreedyTokenizer>()?;
     Ok(())
 }
 

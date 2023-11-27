@@ -40,6 +40,9 @@ impl PyTrainer {
             TrainerWrapper::UnigramTrainer(_) => {
                 Py::new(py, (PyUnigramTrainer {}, base))?.into_py(py)
             }
+            TrainerWrapper::GreedyTokenizerTrainer(_) => {
+                Py::new(py, (PyGTTrainer {}, base))?.into_py(py)
+            }
         })
     }
 }
@@ -871,6 +874,16 @@ impl PyUnigramTrainer {
         Ok((PyUnigramTrainer {}, trainer.into()))
     }
 }
+
+/// Trainer of GreedyTokenizer
+///
+/// Args:
+///     vocab_size (:obj:`int`):
+///         The size of the final vocabulary, including all tokens and alphabet.
+#[pyclass(extends=PyTrainer, module = "tokenizers.trainers", name = "GTTrainer")]
+pub struct PyGTTrainer {}
+#[pymethods]
+impl PyGTTrainer {}
 
 /// Trainers Module
 #[pymodule]
