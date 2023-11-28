@@ -1,6 +1,6 @@
 [package]
 name = "tokenizers-python"
-version = "0.15.0-post0"
+version = "0.15.0-post1"
 authors = ["Anthony MOI <m.anthony.moi@gmail.com>"]
 edition = "2021"
 
