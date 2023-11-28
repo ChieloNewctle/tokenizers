@@ -10,7 +10,6 @@ use general_sam::{
     tokenize::OwnedGeneralSAM, trie::Trie, BTreeTransTable, BoxBisectTable, GeneralSAM,
     GreedyTokenizer as SAMGreedyTokenizer,
 };
-use regex::Regex;
 
 use crate::tokenizer::{Model, Result, Token};
 
@@ -40,6 +39,14 @@ pub struct GreedyTokenizerBuilder {
     pub(super) config: Config,
 }
 
+fn capture_byte_repr(token: &str) -> Option<u8> {
+    if token.len() == 6 && token.starts_with("<0x") && token.ends_with('>') {
+        u8::from_str_radix(&token[3..5], 16).ok()
+    } else {
+        None
+    }
+}
+
 impl GreedyTokenizerBuilder {
     #[must_use]
     pub fn vocab(mut self, vocab: Vocab) -> Self {
@@ -60,11 +67,6 @@ impl GreedyTokenizerBuilder {
     }
 
     pub fn build(self) -> Result<GreedyTokenizer> {
-        lazy_static! {
-            static ref BYTE_REPR_RE: Regex = Regex::new(r"^<0[xX]([[:xdigit:]]{2})>$").unwrap();
-        }
-        let byte_repr_re_ref: &Regex = &BYTE_REPR_RE;
-
         if let Some(unk_token_id) = self.config.unk_token_id {
             if unk_token_id as usize >= self.config.vocab.len() {
                 return Err(super::Error::UnkTokenIDOutOfVocabulary(
@@ -78,13 +80,13 @@ impl GreedyTokenizerBuilder {
         let mut trie: Trie<BTreeTransTable<_>> = Trie::default();
         let mut token_id_in_trie_map = HashMap::<usize, u32>::new();
         for (i, token) in self.config.vocab.iter().enumerate() {
-            let k = if let Some(r) = self
+            let k = if let Some(byte_repr) = self
                 .config
                 .byte_fallback
                 .then_some(())
-                .and_then(|_| byte_repr_re_ref.captures(token).and_then(|x| x.get(1)))
+                .and_then(|_| capture_byte_repr(token))
             {
-                trie.insert_ref_iter([u8::from_str_radix(r.as_str(), 16)?].iter())
+                trie.insert_ref_iter([byte_repr].iter())
             } else {
                 trie.insert_ref_iter(token.as_bytes().iter())
             };
@@ -169,18 +171,18 @@ impl Model for GreedyTokenizer {
             &self
                 .config
                 .unk_token_id
-                .unwrap_or(self.get_vocab_size() as u32),
+                .unwrap_or_else(|| self.get_vocab_size() as u32),
         );
         let mut res = Vec::new();
         let mut cur_pos = 0;
         for (token_id, chunk_size) in tokens {
             res.push(Token {
                 id: token_id,
-                value: self
-                    .id_to_token(token_id)
-                    .ok_or(super::Error::UnkTokenIDNotSet(
-                        sequence[cur_pos..cur_pos + chunk_size].to_owned(),
-                    ))?,
+                value: self.id_to_token(token_id).ok_or_else(|| {
+                    super::Error::UnkTokenIDNotSet(
+                        sequence[cur_pos..cur_pos + chunk_size].bytes().collect(),
+                    )
+                })?,
                 offsets: (cur_pos, cur_pos + chunk_size),
             });
             cur_pos += chunk_size;
