@@ -1,5 +1,5 @@
 [project]
-name = 'tokenizers'
+name = 'tokenizers-gt'
 requires-python = '>=3.7'
 authors = [
     {name = 'Nicolas Patry', email = 'patry.nicolas@protonmail.com'},
@@ -34,7 +34,7 @@ Source = 'https://github.com/huggingface/tokenizers'
 
 
 [project.optional-dependencies]
-testing = ["pytest", "requests", "numpy", "datasets", "black==22.3"]
+testing = ["pytest", "requests", "numpy", "datasets", "black"]
 docs = ["sphinx", "sphinx_rtd_theme", "setuptools_rust"]
 dev = ["tokenizers[testing]"]
 
