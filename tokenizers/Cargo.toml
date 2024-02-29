@@ -70,7 +70,7 @@ fancy-regex = { version = "0.13", optional = true}
 getrandom = { version = "0.2" }
 esaxx-rs = { version = "0.1", default-features = false, features=[]}
 monostate = "0.1"
-general-sam = { version = "0.6", features = ["trie", "utils"] }
+general-sam = { version = "0.7", features = ["trie", "utils"] }
 
 [features]
 default = ["progressbar", "cli", "onig", "esaxx_fast"]
